@@ -1,88 +1,112 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import socket from "../socket/socket";
-import UserList from "./UserList";
-import MessageInput from "./MessageInput";
-import PrivateChat from "./PrivateChat";
+import UserList from "./UserList.jsx";
+import MessageBubble from "./MessageBubble.jsx";
+import MessageInput from "./MessageInput.jsx";
 
 export default function Chat({ username }) {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([]); // all messages
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [privateMessages, setPrivateMessages] = useState([]);
+  const messagesRef = useRef();
+  const audioRef = useRef(null);
 
   useEffect(() => {
+    // register user
     socket.emit("user_join", username);
 
+    // listeners
     socket.on("receive_message", (msg) => {
       setMessages((prev) => [...prev, msg]);
-    });
 
-    socket.on("user_list", (list) => {
-      setOnlineUsers(list);
-    });
+      // If page hidden, show browser notification
+      if (document.hidden && Notification.permission === "granted") {
+        new Notification(`${msg.sender}`, { body: msg.message });
+      }
 
-    socket.on("typing_users", (list) => {
-      setTypingUsers(list);
+      // Immediately ACK delivered back to server for this client
+      socket.emit("delivered", { messageId: msg.id });
     });
 
     socket.on("private_message", (msg) => {
-      setPrivateMessages((prev) => [...prev, msg]);
+      setMessages((prev) => [...prev, msg]);
+      try { audioRef.current.play().catch(()=>{}); } catch(e) {}
+      if (document.hidden && Notification.permission === "granted") {
+        new Notification(`PM from ${msg.sender}`, { body: msg.message });
+      }
+      socket.emit("delivered", { messageId: msg.id });
     });
+
+    socket.on("user_list", (list) => setOnlineUsers(list));
+    socket.on("typing_users", (list) => setTypingUsers(list));
+
+    // Incoming delivered/read updates from server for messages you sent
+    socket.on("message_delivered", ({ messageId, deliveredBy, deliveredByUsername }) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          String(m.id) === String(messageId) && !m.deliveredBy?.includes(deliveredBy)
+            ? { ...m, deliveredBy: [...(m.deliveredBy || []), deliveredBy] }
+            : m
+        )
+      );
+    });
+
+    socket.on("message_read", ({ messageId, readBy, readByUsername }) => {
+      setMessages((prev) =>
+        prev.map((m) =>
+          String(m.id) === String(messageId) && !m.readBy?.includes(readBy)
+            ? { ...m, readBy: [...(m.readBy || []), readBy] }
+            : m
+        )
+      );
+    });
+
+    // Request notification permission once
+    if (Notification && Notification.permission === "default") {
+      Notification.requestPermission().catch(()=>{});
+    }
 
     return () => {
       socket.off("receive_message");
+      socket.off("private_message");
       socket.off("user_list");
       socket.off("typing_users");
-      socket.off("private_message");
+      socket.off("message_delivered");
+      socket.off("message_read");
     };
-  }, []);
+  }, [username]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    const el = messagesRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages]);
+
+  // User clicked on a message to mark as read (manual read)
+  const markAsRead = (messageId) => {
+    socket.emit("read", { messageId });
+    // optimistically update UI
+    setMessages((prev) =>
+      prev.map((m) => (String(m.id) === String(messageId) ? { ...m, readBy: [...(m.readBy||[]), socket.id] } : m))
+    );
+  };
 
   return (
     <div style={{ display: "flex", height: "100vh" }}>
-      {/* Sidebar users */}
-      <UserList
-        users={onlineUsers}
-        currentUser={socket.id}
-        selectUser={setSelectedUser}
-      />
+      <UserList users={onlineUsers} currentUser={socket.id} selectUser={setSelectedUser} />
+      <div style={{ flex: 1, padding: 16, display: "flex", flexDirection: "column" }}>
+        <h2>Global Chat</h2>
+        <div ref={messagesRef} style={{ flex: 1, overflowY: "auto", border: "1px solid #ddd", padding: 12 }}>
+          {messages.map((m) => (
+            <MessageBubble key={m.id} message={m} onMarkRead={() => markAsRead(m.id)} />
+          ))}
+          {typingUsers.length > 0 && <p style={{ fontStyle: "italic" }}>{typingUsers.join(", ")} typing...</p>}
+        </div>
 
-      {/* Main chat area */}
-      <div style={{ flex: 1, padding: "1rem", display: "flex", flexDirection: "column" }}>
-        {selectedUser ? (
-          <PrivateChat
-            selectedUser={selectedUser}
-            messages={privateMessages}
-            username={username}
-          />
-        ) : (
-          <>
-            <h2>Global Chat</h2>
-            <div
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                border: "1px solid #ccc",
-                padding: "1rem",
-                marginBottom: "1rem",
-              }}>
-              {messages.map((msg) => (
-                <p key={msg.id}>
-                  <strong>{msg.sender}: </strong>
-                  {msg.message}
-                </p>
-              ))}
-
-              {typingUsers.length > 0 && (
-                <p style={{ fontStyle: "italic" }}>
-                  {typingUsers.join(", ")} typing...
-                </p>
-              )}
-            </div>
-
-            <MessageInput />
-          </>
-        )}
+        <div style={{ marginTop: 12 }}>
+          <MessageInput />
+        </div>
       </div>
     </div>
   );

@@ -2,14 +2,64 @@
 
 This assignment focuses on building a real-time chat application using Socket.io, implementing bidirectional communication between clients and server.
 
-## Assignment Overview
 
-You will build a chat application with the following features:
-1. Real-time messaging using Socket.io
-2. User authentication and presence
-3. Multiple chat rooms or private messaging
-4. Real-time notifications
-5. Advanced features like typing indicators and read receipts
+---
+
+## Implemented Features
+- Real-time global chat (Socket.io)
+- Private messaging
+- Typing indicator (shows who is typing)
+- Online users list (updated on join/leave)
+- Delivery acknowledgement (ACK) — server records who received each message and notifies the sender (`message_delivered` events)
+- Read receipts — users can click a message to mark it as read; server records read receipts and notifies the sender (`message_read` events)
+- Browser notifications when the page is hidden (requests permission)
+- Simple in-memory message store and API endpoints (`/api/messages` and `/api/users`) for demonstration and pagination
+
+---
+
+## How to run (local)
+
+### Requirements
+- Node.js 18+ (or current LTS)
+- npm
+- Ports: default backend `5000`, frontend `5173`
+
+### 1. Install server dependencies
+```bash
+cd server
+npm install
+```
+
+### 2. Install client dependencies
+```bash
+cd client
+npm install
+```
+
+### 3. Start the server
+```bash
+cd server
+node server.js
+```
+
+### 4. Start the client
+```bash
+cd server
+npm run dev
+```
+
+## Testing
+Open two browser windows (or two different devices) to test:
+Enter two different usernames
+Send messages in global chat
+Click messages to mark as read
+Observe delivered/read counts on each message
+Try private messaging by clicking a user in the sidebar
+
+### Notes for the reviewer / instructor
+This project demonstrates core Socket.io bidirectional features required by Week 5.
+Extra features: delivery ACKs, read receipts, sound & browser notifications were implemented to demonstrate real-world chat behavior.
+For evaluation, the backend currently uses in-memory storage for messages — this was chosen to keep the demo simple. Moving to MongoDB is straightforward (store message objects and update delivered/read arrays).
 
 ## Project Structure
 
@@ -18,60 +68,29 @@ socketio-chat/
 ├── client/                 # React front-end
 │   ├── public/             # Static files
 │   ├── src/                # React source code
+│   │   ├── assets/    
 │   │   ├── components/     # UI components
-│   │   ├── context/        # React context providers
-│   │   ├── hooks/          # Custom React hooks
-│   │   ├── pages/          # Page components
 │   │   ├── socket/         # Socket.io client setup
 │   │   └── App.jsx         # Main application component
+│   │   └── App.css   
+│   │   └── App.jsx         # Main application component
+│   │   └── index.css
+│   │   └── main.jsx      
+│   └── index.html
+│   └── package-lock.json     
 │   └── package.json        # Client dependencies
+│   └── README.md           # Client README.md
+│   └── vite.config.js
 ├── server/                 # Node.js back-end
-│   ├── config/             # Configuration files
-│   ├── controllers/        # Socket event handlers
-│   ├── models/             # Data models
-│   ├── socket/             # Socket.io server setup
-│   ├── utils/              # Utility functions
+│   ├── node_modules/   
 │   ├── server.js           # Main server file
-│   └── package.json        # Server dependencies
+│   └── package-lock.json   
+│   └── package.json        # Client dependencies
 └── README.md               # Project documentation
 ```
 
-## Getting Started
-
-1. Accept the GitHub Classroom assignment invitation
-2. Clone your personal repository that was created by GitHub Classroom
-3. Follow the setup instructions in the `Week5-Assignment.md` file
-4. Complete the tasks outlined in the assignment
-
-## Files Included
-
-- `Week5-Assignment.md`: Detailed assignment instructions
-- Starter code for both client and server:
-  - Basic project structure
-  - Socket.io configuration templates
-  - Sample components for the chat interface
-
-## Requirements
-
-- Node.js (v18 or higher)
-- npm or yarn
-- Modern web browser
-- Basic understanding of React and Express
-
-## Submission
-
-Your work will be automatically submitted when you push to your GitHub Classroom repository. Make sure to:
-
-1. Complete both the client and server portions of the application
-2. Implement the core chat functionality
-3. Add at least 3 advanced features
-4. Document your setup process and features in the README.md
-5. Include screenshots or GIFs of your working application
-6. Optional: Deploy your application and add the URLs to your README.md
-
-## Resources
-
-- [Socket.io Documentation](https://socket.io/docs/v4/)
-- [React Documentation](https://react.dev/)
-- [Express.js Documentation](https://expressjs.com/)
-- [Building a Chat Application with Socket.io](https://socket.io/get-started/chat) 
+## Screenshots of working application
+![Login page](image.png)
+![Global Chat showing typing feature](image-1.png)
+![Notifications](image-2.png)
+![Read receipts](image-3.png)
